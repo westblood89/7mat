@@ -174,8 +174,8 @@
     function populateGroupSelects() {
       const fixtureSelect = document.getElementById('fixtureGroupSelect');
       const standingsSelect = document.getElementById('standingsGroupSelect');
-      fixtureSelect.innerHTML = '<option value=\"\">Grup seçin...</option>';
-      standingsSelect.innerHTML = '<option value=\"\">Grup seçin...</option>';
+      fixtureSelect.innerHTML = '<option value="">Grup seçin...</option>';
+      standingsSelect.innerHTML = '<option value="">Grup seçin...</option>';
       'ABCDEFGHIJKLMNO'.split('').forEach(g => {
         const hasMember = (leagueData.groups[g]||[]).some(n => n && n.trim() !== '');
         if (hasMember) {
@@ -207,28 +207,28 @@
     function showFixtures() {
       const group = document.getElementById('fixtureGroupSelect').value;
       const content = document.getElementById('fixtureContent');
-      if (!group) { content.innerHTML = '<p class=\"text-gray-500\">Lütfen bir grup seçin.</p>'; return; }
+      if (!group) { content.innerHTML = '<p class="text-gray-500">Lütfen bir grup seçin.</p>'; return; }
       if (!leagueData.fixtures[group]) leagueData.fixtures[group] = generateFixtures(group);
       const fixtures = leagueData.fixtures[group];
       content.innerHTML = `
-        <div class=\"space-y-6\">
+        <div class="space-y-6">
           ${fixtures.map(week => `
-            <div class=\"border border-gray-200 rounded-lg p-4\">
-              <h3 class=\"font-bold text-lg mb-3 text-indigo-700\">${week.week}. Hafta</h3>
-              <div class=\"space-y-2\">
+            <div class="border border-gray-200 rounded-lg p-4">
+              <h3 class="font-bold text-lg mb-3 text-indigo-700">${week.week}. Hafta</h3>
+              <div class="space-y-2">
                 ${week.matches.map(match => `
-                  <div class=\"flex items-center space-x-2 bg-gray-50 p-3 rounded\">
-                    <span class=\"flex-1 text-right font-medium\">${match.home}</span>
-                    <input type=\"number\" 
-                           value=\"${leagueData.results[match.id]?.homeScore ?? ''}\"
-                           onchange=\"updateScore('${match.id}', 'homeScore', this.value)\"
-                           class=\"w-12 text-center border border-gray-300 rounded px-2 py-1\">
-                    <span class=\"text-gray-500\">-</span>
-                    <input type=\"number\" 
-                           value=\"${leagueData.results[match.id]?.awayScore ?? ''}\"
-                           onchange=\"updateScore('${match.id}', 'awayScore', this.value)\"
-                           class=\"w-12 text-center border border-gray-300 rounded px-2 py-1\">
-                    <span class=\"flex-1 font-medium\">${match.away}</span>
+                  <div class="flex items-center space-x-2 bg-gray-50 p-3 rounded">
+                    <span class="flex-1 text-right font-medium">${match.home}</span>
+                    <input type="number" 
+                           value="${leagueData.results[match.id]?.homeScore ?? ''}"
+                           onchange="updateScore('${match.id}', 'homeScore', this.value)"
+                           class="w-12 text-center border border-gray-300 rounded px-2 py-1">
+                    <span class="text-gray-500">-</span>
+                    <input type="number" 
+                           value="${leagueData.results[match.id]?.awayScore ?? ''}"
+                           onchange="updateScore('${match.id}', 'awayScore', this.value)"
+                           class="w-12 text-center border border-gray-300 rounded px-2 py-1">
+                    <span class="flex-1 font-medium">${match.away}</span>
                   </div>
                 `).join('')}
               </div>
@@ -277,39 +277,39 @@
     function showStandings() {
       const group = document.getElementById('standingsGroupSelect').value;
       const content = document.getElementById('standingsContent');
-      if (!group) { content.innerHTML = '<p class=\"text-gray-500\">Lütfen bir grup seçin.</p>'; return; }
+      if (!group) { content.innerHTML = '<p class="text-gray-500">Lütfen bir grup seçin.</p>'; return; }
       const standings = calculateStandings(group);
       const qualifyCount = 4;
       content.innerHTML = `
-        <div class=\"overflow-x-auto\">
-          <table class=\"w-full border-collapse border border-gray-300\">
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse border border-gray-300">
             <thead>
-              <tr class=\"bg-indigo-600 text-white\">
-                <th class=\"border border-gray-300 px-3 py-2 text-center\">Sıra</th>
-                <th class=\"border border-gray-300 px-3 py-2 text-left\">Öğrenci</th>
-                <th class=\"border border-gray-300 px-3 py-2 text-center\">O</th>
-                <th class=\"border border-gray-300 px-3 py-2 text-center\">G</th>
-                <th class=\"border border-gray-300 px-3 py-2 text-center\">B</th>
-                <th class=\"border border-gray-300 px-3 py-2 text-center\">M</th>
-                <th class=\"border border-gray-300 px-3 py-2 text-center\">P</th>
+              <tr class="bg-indigo-600 text-white">
+                <th class="border border-gray-300 px-3 py-2 text-center">Sıra</th>
+                <th class="border border-gray-300 px-3 py-2 text-left">Öğrenci</th>
+                <th class="border border-gray-300 px-3 py-2 text-center">O</th>
+                <th class="border border-gray-300 px-3 py-2 text-center">G</th>
+                <th class="border border-gray-300 px-3 py-2 text-center">B</th>
+                <th class="border border-gray-300 px-3 py-2 text-center">M</th>
+                <th class="border border-gray-300 px-3 py-2 text-center">P</th>
               </tr>
             </thead>
             <tbody>
               ${standings.map((team, i) => `
-                <tr class=\"${i < qualifyCount ? 'qualified' : ''}\">
-                  <td class=\"border border-gray-300 px-3 py-2 text-center font-bold\">${i + 1}</td>
-                  <td class=\"border border-gray-300 px-3 py-2 font-medium\">${team.name}</td>
-                  <td class=\"border border-gray-300 px-3 py-2 text-center\">${team.played}</td>
-                  <td class=\"border border-gray-300 px-3 py-2 text-center\">${team.won}</td>
-                  <td class=\"border border-gray-300 px-3 py-2 text-center\">${team.drawn}</td>
-                  <td class=\"border border-gray-300 px-3 py-2 text-center\">${team.lost}</td>
-                  <td class=\"border border-gray-300 px-3 py-2 text-center font-bold\">${team.points}</td>
+                <tr class="${i < qualifyCount ? 'qualified' : ''}">
+                  <td class="border border-gray-300 px-3 py-2 text-center font-bold">${i + 1}</td>
+                  <td class="border border-gray-300 px-3 py-2 font-medium">${team.name}</td>
+                  <td class="border border-gray-300 px-3 py-2 text-center">${team.played}</td>
+                  <td class="border border-gray-300 px-3 py-2 text-center">${team.won}</td>
+                  <td class="border border-gray-300 px-3 py-2 text-center">${team.drawn}</td>
+                  <td class="border border-gray-300 px-3 py-2 text-center">${team.lost}</td>
+                  <td class="border border-gray-300 px-3 py-2 text-center font-bold">${team.points}</td>
                 </tr>`).join('')}
             </tbody>
           </table>
-          <div class=\"mt-4 text-sm text-gray-600\">
-            <div class=\"flex items-center space-x-2\">
-              <div class=\"w-4 h-4 bg-green-200 border border-green-300\"></div>
+          <div class="mt-4 text-sm text-gray-600">
+            <div class="flex items-center space-x-2">
+              <div class="w-4 h-4 bg-green-200 border border-green-300"></div>
               <span>Bir sonraki tura çıkan öğrenciler (İlk ${qualifyCount})</span>
             </div>
           </div>
