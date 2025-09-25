@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Matematik Ligi Yönetim Sistemi — 7. Sınıflar</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <style>
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .qualified { background-color: #dcfce7 !important; }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+  <div class="container mx-auto px-4 py-6">
+    <!-- Header -->
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+      <div class="flex items-center justify-center mb-4">
+        <div class="text-4xl mr-4">🎒</div>
+        <div class="text-center">
+          <h1 class="text-3xl font-bold text-indigo-800 mb-2">🏆 Matematik Ligi</h1>
+          <div class="text-center">
+            <span class="text-gray-600 font-medium text-xl">7. Sınıflar Grup Aşaması</span>
+          </div>
+        </div>
+        <div class="text-4xl ml-4">📚</div>
+      </div>
+      <div class="flex justify-center items-center space-x-4 text-2xl">
+        <span>✏️</span><span>📝</span><span>🧮</span><span>📐</span><span>📏</span><span>🔢</span><span>➕</span><span>➖</span><span>✖️</span><span>➗</span>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="bg-white rounded-lg shadow-lg mb-6">
+      <div class="flex flex-wrap border-b">
+        <button onclick="showTab('standings', this)" class="tab-btn px-4 py-3 font-medium text-indigo-600 border-b-2 border-indigo-600">
+          📊 Puan Durumu
+        </button>
+        <button onclick="showTab('fixtures', this)" class="tab-btn px-4 py-3 font-medium text-gray-500 hover:text-indigo-600">
+          📅 Fikstür
+        </button>
+      </div>
+    </div>
+
+    <!-- Standings Tab -->
+    <div id="standings" class="tab-content active">
+      <div class="bg-white rounded-lg shadow-lg p-6">
+        <h2 class="text-2xl font-bold mb-4 text-gray-800">Puan Durumu</h2>
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Grup Seç:</label>
+          <select id="standingsGroupSelect" onchange="showStandings()" class="border border-gray-300 rounded-lg px-3 py-2">
+            <option value="">Grup seçin...</option>
+          </select>
+        </div>
+        <div id="standingsContent"></div>
+      </div>
+    </div>
+
+    <!-- Fixtures Tab -->
+    <div id="fixtures" class="tab-content">
+      <div class="bg-white rounded-lg shadow-lg p-6">
+        <h2 class="text-2xl font-bold mb-4 text-gray-800">Fikstür ve Sonuçlar</h2>
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Grup Seç:</label>
+          <select id="fixtureGroupSelect" onchange="showFixtures()" class="border border-gray-300 rounded-lg px-3 py-2">
+            <option value="">Grup seçin...</option>
+          </select>
+        </div>
+
+        <!-- Yedek İndir / Yükle — Fikstür içinde -->
+        <div class="mb-4 flex gap-2">
+          <button onclick="downloadBackup()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm">💾 Yedeği İndir</button>
+          <label class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm cursor-pointer">📤 Yedekten Yükle
+            <input type="file" id="restoreInput" accept="application/json" class="hidden" onchange="restoreFromFile(event)" />
+          </label>
+        </div>
+
+        <div id="fixtureContent"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---------- 7. sınıf için ayrı depolama anahtarı ----------
+    const STORAGE_KEY = 'mathLeagueData7';
+
+    // ---------- Veri Modeli ----------
+    let leagueData = { groups: {}, fixtures: {}, results: {} };
+
+    // ---------- Kaydet / Yükle / Yedek ----------
+    function saveData() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(leagueData));
+        createDownloadableBackup();
+        console.log('Veriler kaydedildi');
+      } catch (e) {
+        console.error('Veri kaydetme hatası:', e);
+        alert('❌ Veriler kaydedilemedi!');
+      }
+    }
+
+    function loadData() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try { leagueData = JSON.parse(saved) || leagueData; }
+        catch (e) { console.error('Veri yükleme hatası', e); leagueData = { groups: {}, fixtures: {}, results: {} }; }
+      }
+      // Eğer hiç dolu grup yoksa örnekleri yükle
+      const hasAnyMember = Object.values(leagueData.groups || {}).some(arr => Array.isArray(arr) && arr.some(n => n && n.trim() !== ''));
+      if (!hasAnyMember) {
+        initializeWithSampleData();
+        saveData();
+      }
+      initializeGroups();
+      populateGroupSelects();
+    }
+
+    function createDownloadableBackup() {
+      const dataStr = JSON.stringify(leagueData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      let a = document.getElementById('downloadBackup');
+      if (!a) { a = document.createElement('a'); a.id = 'downloadBackup'; a.style.display = 'none'; document.body.appendChild(a); }
+      a.href = URL.createObjectURL(dataBlob);
+      a.download = `matematik_ligi_7sinif_yedek_${new Date().toISOString().slice(0,10)}.json`;
+    }
+    function downloadBackup(){ const a=document.getElementById('downloadBackup'); if(a) a.click(); }
+    function restoreFromFile(ev){
+      const f = ev.target.files?.[0]; if(!f) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const obj = JSON.parse(reader.result);
+          if (obj && obj.groups && obj.fixtures && obj.results) {
+            leagueData = obj; saveData();
+            initializeGroups(); populateGroupSelects(); showFixtures(); showStandings();
+            alert('✅ Yedekten geri yüklendi');
+          } else { alert('❌ Geçersiz yedek dosyası'); }
+        } catch { alert('❌ Dosya okunamadı'); }
+        ev.target.value = '';
+      };
+      reader.readAsText(f);
+    }
+
+    // ---------- 7. Sınıflar Grupları (tamamı 8 kişi) ----------
+    function initializeWithSampleData() {
+      leagueData.groups['A'] = ['ELİS DEFNE YILDIZ','DERYA DİNÇOĞLU','MEHMET KUZEY ÖZDEMİR','METE OSKAY','NURDAN BERRA UÇAR','TOPRAK GÜVEN','NAZ ÖKSÜZ','AZRA ŞANLITOP'];
+      leagueData.groups['B'] = ['ATA DENİZ DAĞLARCA','İREM GÖKBAYRAK','LARA AÇKU','HÜSEYİN YAŞAR','TUNA LAÇİN','ESİLA RAVZA ÖZCAN','YAĞMUR BARIŞ','ELİFSU ÖNDER'];
+      leagueData.groups['C'] = ['ABDULLAH MERT ÇALIŞKAN','MERVE ERÇETİN','ADA GÜZEY','DURU TARLIĞ','DEREN KARAKÖSE','UMUT GÜNEY ÖZDEMİR','METE ÖZBEK','ELİF SU ÖZDEMİR'];
+      leagueData.groups['D'] = ['ZEYNEP ASLI IŞIK','MEHMET ALP KUZUCUK','ELİF ÇİM','EMİR YILDIZ','NECATİ EREN SATILMIŞOĞLU','UMAY SOFUOĞLU','TUNA ÇİÇEK','LEYLA AKBIYIK'];
+      leagueData.groups['E'] = ['MEHMET CAN DİNMEZ','EFE KEMAL ÖZÜÇER','İPEK SÜRMEGÖZ','OĞUZHAN VURUCU','DOĞA ALSANCAK','BATU DOĞAN','AMADA ZUHAL DİBO','ADA MELİS ELKIRMIŞ'];
+      leagueData.groups['F'] = ['DOĞA ÇETİN','DERİN İŞERİ','MASAL GERÇEK','METE KESKİN','MERYEM ERGİNOĞLU','MİNA VATANSEVER','METE KILINÇ','RÜZGAR ERDEM AKYOL'];
+      leagueData.groups['G'] = ['EFE ATLI','EREN ÇAĞLAR','ASYA DEMİRCİ','SALİM NİYAZİ','CEMAL TARIK ŞENOL','MAYA ASMİN TEK','RANA İSMAİLOĞULLARI','HAYAT ARSLAN'];
+      leagueData.groups['H'] = ['ERİNÇ GEDİKOĞLU','ALYA DÖRTKARDEŞ','MEHMET SARP YEŞİLYURT','DERİN AKKAYA','ÖYKÜ ÖYMEN','DORUK ÇAPAN','MERT ARHAN SAVURAN','EMİR BODUR'];
+      leagueData.groups['I'] = ['ZEYNEP ERVA ÇELİK','MEHMET CAN DİNMEZ','DENİZ DEMİR','RÜZGAR KAHRAMAN ÇELİK','DAMLA ÖZDEMİR','EGE ALTAN','IRMAK UĞUR','ALP ARAS BAHÇE'];
+      leagueData.groups['J'] = ['CAN KARAN NURTAŞ','ÇINAR UTKU ÜLGEN','ASYA ELA DEMİREL','ASİL ERKAN','DAMLA DİKME','EMİR EGE ÇETİN','ALARA AKBEZ','ALYA DURU GÜNEŞ'];
+      leagueData.groups['K'] = ['ARTİN HASANZADE','MASAL BAŞ','NESİBE MELEK SERT','SARP DOĞAN','NEVRA DİLA GEDİKLİ','ZEYNEP ŞİRİN ÇAKILCIOĞLU','ÖYKÜ SANLI','TÜMER YILMAZ ERGENE'];
+      leagueData.groups['L'] = ['ENES ÇAKILLAR','SEOYEON LEE','YASER FIRAT AKSU','DORUK HÜSEYİN BEYTAŞ','METE GÜNGÖR','MEHMET ERTUĞRUL','EGE EREN YILMAZ','AZRA SEVİNÇ'];
+      leagueData.groups['M'] = ['FATMA UMRAY ERDEM','BİRCE ELA YILMAZ','GÜLŞAH ÖCAL','AYÇA ARSLAN','ZEYNEP EDA TAŞ','DEFNE UZ','EMİR SEVİNÇ','ALİCAN HAKKI KELEŞ'];
+      leagueData.groups['N'] = ['ARYA KARAARSLAN','CAN ERKAYHAN','DERİN ÇETİNYAZICI','SARYA ÇOBAN','IRMAK ERTEKİN','İNANÇ GÜVEN','NAZ EYLÜL YILDIZ','ORDİNARYÜS PROFESÖR'];
+      leagueData.groups['O'] = ['BEGÜM NAZ GÜNGÖR','SAİT YETKİN','EMRE OPÇİN','ATAHAN TARTAN','KAAN ÜSTÜNER','AZRA MİNA KARADENİZ','ÖMER EYERCİ','BÖLÜM SONU CANAVARI'];
+    }
+
+    // ---------- Yardımcılar ----------
+    function initializeGroups() {
+      'ABCDEFGHIJKLMNO'.split('').forEach(letter => {
+        const cap = 8;
+        if (!leagueData.groups[letter]) leagueData.groups[letter] = Array(cap).fill('');
+      });
+    }
+
+    function populateGroupSelects() {
+      const fixtureSelect = document.getElementById('fixtureGroupSelect');
+      const standingsSelect = document.getElementById('standingsGroupSelect');
+      fixtureSelect.innerHTML = '<option value=\"\">Grup seçin...</option>';
+      standingsSelect.innerHTML = '<option value=\"\">Grup seçin...</option>';
+      'ABCDEFGHIJKLMNO'.split('').forEach(g => {
+        const hasMember = (leagueData.groups[g]||[]).some(n => n && n.trim() !== '');
+        if (hasMember) {
+          const o1 = document.createElement('option'); o1.value = g; o1.textContent = 'Grup ' + g; fixtureSelect.appendChild(o1);
+          const o2 = document.createElement('option'); o2.value = g; o2.textContent = 'Grup ' + g; standingsSelect.appendChild(o2);
+        }
+      });
+    }
+
+    function generateFixtures(group) {
+      const members = (leagueData.groups[group] || []).filter(m => m.trim() !== '');
+      const n = members.length; if (n < 2) return [];
+      const fixtures = []; const totalWeeks = n % 2 === 0 ? n - 1 : n;
+      for (let w = 1; w <= totalWeeks; w++) fixtures.push({ week: w, matches: [] });
+      let matchId = 0; const allMatches = [];
+      for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) allMatches.push({ id: `${group}_${matchId++}`, home: members[i], away: members[j] });
+      let wi = 0; for (const m of allMatches) {
+        let placed = false, tries = 0;
+        while (!placed && tries < totalWeeks) {
+          const week = fixtures[wi];
+          const used = new Set(); week.matches.forEach(x => { used.add(x.home); used.add(x.away); });
+          if (!used.has(m.home) && !used.has(m.away)) { week.matches.push({ ...m }); placed = true; }
+          wi = (wi + 1) % totalWeeks; tries++;
+        }
+      }
+      return fixtures;
+    }
+
+    function showFixtures() {
+      const group = document.getElementById('fixtureGroupSelect').value;
+      const content = document.getElementById('fixtureContent');
+      if (!group) { content.innerHTML = '<p class=\"text-gray-500\">Lütfen bir grup seçin.</p>'; return; }
+      if (!leagueData.fixtures[group]) leagueData.fixtures[group] = generateFixtures(group);
+      const fixtures = leagueData.fixtures[group];
+      content.innerHTML = `
+        <div class=\"space-y-6\">
+          ${fixtures.map(week => `
+            <div class=\"border border-gray-200 rounded-lg p-4\">
+              <h3 class=\"font-bold text-lg mb-3 text-indigo-700\">${week.week}. Hafta</h3>
+              <div class=\"space-y-2\">
+                ${week.matches.map(match => `
+                  <div class=\"flex items-center space-x-2 bg-gray-50 p-3 rounded\">
+                    <span class=\"flex-1 text-right font-medium\">${match.home}</span>
+                    <input type=\"number\" 
+                           value=\"${leagueData.results[match.id]?.homeScore ?? ''}\"
+                           onchange=\"updateScore('${match.id}', 'homeScore', this.value)\"
+                           class=\"w-12 text-center border border-gray-300 rounded px-2 py-1\">
+                    <span class=\"text-gray-500\">-</span>
+                    <input type=\"number\" 
+                           value=\"${leagueData.results[match.id]?.awayScore ?? ''}\"
+                           onchange=\"updateScore('${match.id}', 'awayScore', this.value)\"
+                           class=\"w-12 text-center border border-gray-300 rounded px-2 py-1\">
+                    <span class=\"flex-1 font-medium\">${match.away}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `).join('')}
+        </div>`;
+    }
+
+    function updateScore(matchId, scoreType, value) {
+      if (!leagueData.results[matchId]) leagueData.results[matchId] = {};
+      leagueData.results[matchId][scoreType] = value === '' ? '' : (parseInt(value) || 0);
+      saveData();
+      const group = matchId.split('_')[0];
+      if (document.getElementById('standingsGroupSelect').value === group) showStandings();
+    }
+
+    function calculateStandings(group) {
+      const members = (leagueData.groups[group] || []).filter(m => m.trim() !== '');
+      const standings = members.map(member => ({ name: member, played: 0, won: 0, drawn: 0, lost: 0, correct: 0, wrong: 0, goalDifference: 0, points: 0 }));
+      Object.keys(leagueData.results).forEach(matchId => {
+        if (!matchId.startsWith(group + '_')) return;
+        const result = leagueData.results[matchId];
+        if (result.homeScore === '' || result.awayScore === '' || result.homeScore == null || result.awayScore == null) return;
+        const homeScore = parseInt(result.homeScore) || 0;
+        const awayScore = parseInt(result.awayScore) || 0;
+        const fixtures = leagueData.fixtures[group] || [];
+        let homeTeam, awayTeam;
+        fixtures.forEach(week => week.matches.forEach(match => { if (match.id === matchId) { homeTeam = match.home; awayTeam = match.away; } }));
+        if (!homeTeam || !awayTeam) return;
+        const homeIndex = standings.findIndex(s => s.name === homeTeam);
+        const awayIndex = standings.findIndex(s => s.name === awayTeam);
+        if (homeIndex === -1 || awayIndex === -1) return;
+        standings[homeIndex].played++; standings[awayIndex].played++;
+        standings[homeIndex].correct += homeScore; standings[homeIndex].wrong += awayScore;
+        standings[awayIndex].correct += awayScore; standings[awayIndex].wrong += homeScore;
+        if (homeScore > awayScore) { standings[homeIndex].won++; standings[homeIndex].points += 3; standings[awayIndex].lost++; }
+        else if (homeScore < awayScore) { standings[awayIndex].won++; standings[awayIndex].points += 3; standings[homeIndex].lost++; }
+        else { standings[homeIndex].drawn++; standings[awayIndex].drawn++; standings[homeIndex].points++; standings[awayIndex].points++; }
+        standings[homeIndex].goalDifference = standings[homeIndex].correct - standings[homeIndex].wrong;
+        standings[awayIndex].goalDifference = standings[awayIndex].correct - standings[awayIndex].wrong;
+      });
+      standings.sort((a, b) => (b.points - a.points) || (b.goalDifference - a.goalDifference) || (b.correct - a.correct));
+      return standings;
+    }
+
+    function showStandings() {
+      const group = document.getElementById('standingsGroupSelect').value;
+      const content = document.getElementById('standingsContent');
+      if (!group) { content.innerHTML = '<p class=\"text-gray-500\">Lütfen bir grup seçin.</p>'; return; }
+      const standings = calculateStandings(group);
+      const qualifyCount = 4;
+      content.innerHTML = `
+        <div class=\"overflow-x-auto\">
+          <table class=\"w-full border-collapse border border-gray-300\">
+            <thead>
+              <tr class=\"bg-indigo-600 text-white\">
+                <th class=\"border border-gray-300 px-3 py-2 text-center\">Sıra</th>
+                <th class=\"border border-gray-300 px-3 py-2 text-left\">Öğrenci</th>
+                <th class=\"border border-gray-300 px-3 py-2 text-center\">O</th>
+                <th class=\"border border-gray-300 px-3 py-2 text-center\">G</th>
+                <th class=\"border border-gray-300 px-3 py-2 text-center\">B</th>
+                <th class=\"border border-gray-300 px-3 py-2 text-center\">M</th>
+                <th class=\"border border-gray-300 px-3 py-2 text-center\">P</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${standings.map((team, i) => `
+                <tr class=\"${i < qualifyCount ? 'qualified' : ''}\">
+                  <td class=\"border border-gray-300 px-3 py-2 text-center font-bold\">${i + 1}</td>
+                  <td class=\"border border-gray-300 px-3 py-2 font-medium\">${team.name}</td>
+                  <td class=\"border border-gray-300 px-3 py-2 text-center\">${team.played}</td>
+                  <td class=\"border border-gray-300 px-3 py-2 text-center\">${team.won}</td>
+                  <td class=\"border border-gray-300 px-3 py-2 text-center\">${team.drawn}</td>
+                  <td class=\"border border-gray-300 px-3 py-2 text-center\">${team.lost}</td>
+                  <td class=\"border border-gray-300 px-3 py-2 text-center font-bold\">${team.points}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+          <div class=\"mt-4 text-sm text-gray-600\">
+            <div class=\"flex items-center space-x-2\">
+              <div class=\"w-4 h-4 bg-green-200 border border-green-300\"></div>
+              <span>Bir sonraki tura çıkan öğrenciler (İlk ${qualifyCount})</span>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    // ---------- Sekmeler ----------
+    function showTab(tabName, btn) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.getElementById(tabName).classList.add('active');
+      document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('text-indigo-600','border-b-2','border-indigo-600'); b.classList.add('text-gray-500'); });
+      if (btn) { btn.classList.remove('text-gray-500'); btn.classList.add('text-indigo-600','border-b-2','border-indigo-600'); }
+      if (tabName === 'standings') showStandings();
+      if (tabName === 'fixtures') showFixtures();
+    }
+
+    // ---------- Init ----------
+    document.addEventListener('DOMContentLoaded', () => {
+      loadData();
+      createDownloadableBackup();
+      // Puan Durumu için ilk uygun grubu otomatik seç
+      const sel = document.getElementById('standingsGroupSelect');
+      setTimeout(() => { if (sel && sel.options.length > 1) { sel.selectedIndex = 1; showStandings(); } }, 0);
+    });
+  </script>
+</body>
+</html>
